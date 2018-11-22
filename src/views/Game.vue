@@ -10,9 +10,10 @@
             >({{ n.num }})
             </li>
         </ul>
+        <div><span>Remain num: {{ remain_num }}</span></div>
         <div>
-            <span>Red: {{ red }}</span> |
-            <span>Blue: {{ blue }}</span>
+            <span>Red(owned): {{ red }}</span> |
+            <span>Blue(owned): {{ blue }}</span>
         </div>
     </div>
 </template>
@@ -24,6 +25,7 @@
             return {
                 users: 2,
                 npc: [],
+                remain_num: 0,
                 red: 0,
                 blue: 0
             }
@@ -45,29 +47,53 @@
                 })
             },
 
-            run(i) {
-                let cur_num = this.npc[i].num
-                this.npc[i].num = 0
-                while (cur_num > 0) {
-                    i = this.nextIndex(i)
-                    this.npc[i].num += 1
-                    cur_num--
-                }
-                return this.nextIndex(i)
-            },
             play(i, u) {
                 let user = u < 6 ? 'red' : 'blue'
-                i = this.run(i)
-                if (this.npc[i].num > 0) {
-                    this.play(i, u)
-                } else {
-                    this[user] += this.npc[this.nextIndex(i)].num
-                    this.npc[this.nextIndex(i)].num = 0
-                }
+
+                this.run(i).then(r => {
+                    i = r
+                    if (this.npc[i].num > 0) {
+                        this.play(i, u)
+                    } else {
+                        this[user] += this.npc[this.nextIndex(i)].num
+                        this.npc[this.nextIndex(i)].num = 0
+                    }
+                })
+            },
+
+            run(i) {
+                let cur_num = this.npc[i].num
+                let r_i = i + cur_num
+
+                this.npc[i].num = 0
+
+                return new Promise((resolve) => {
+                    this.remain_num = cur_num
+
+                    for (let j = 0; j < cur_num; j++) {
+                        let that = this
+                        ;(function (j) {
+                            let timer = setTimeout(() => {
+                                that.remain_num = cur_num - j - 1
+
+                                i = that.nextIndex(i)
+                                that.npc[i].num += 1
+
+                                if (j === cur_num-1) {
+                                    setTimeout(() => {
+                                        resolve(that.nextIndex(r_i))
+                                    }, 1000)
+                                }
+
+                                clearTimeout(timer)
+                            }, j * 1000)
+                        })(j)
+                    }
+                })
             },
 
             nextIndex(i) {
-                return i === 11 ? 0 : i + 1
+                return (i + 1) % 12
             }
         }
     }
